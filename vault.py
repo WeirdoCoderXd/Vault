@@ -1,6 +1,9 @@
 import sqlite3
 import os
 import hashlib
+import os
+import base64
+import time
 from cryptography.fernet import Fernet
 from getpass import getpass
 from tabulate import tabulate
@@ -9,6 +12,8 @@ from pyfiglet import Figlet
 DB_FILE = "vault.db"
 KEY_FILE = "vault.key"
 
+MAX_ATTEMPTS = 3
+BLOCK_TIME = 30 
 def generate_key():
     if not os.path.exists(KEY_FILE):
         key = Fernet.generate_key()
@@ -33,11 +38,15 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS master_password (
             id INTEGER PRIMARY KEY,
-            password_hash TEXT
+            password_hash TEXT,
+            salt BLOB
         )
     """)
     conn.commit()
     conn.close()
+
+def generate_salt():
+    return os.urandom(16)  # 16 байт соли
 
 def set_master_password():
     conn = sqlite3.connect(DB_FILE)
@@ -46,27 +55,37 @@ def set_master_password():
     if cursor.fetchone() is None:
         print("🚨 Важно: Запомните ваш мастер-пароль. Потеря пароля приведёт к невозможности доступа к данным!")
         password = getpass("Установите мастер-пароль: ")
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-        cursor.execute("INSERT INTO master_password (password_hash) VALUES (?)", (password_hash,))
+        salt = generate_salt()
+        password_hash = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)  # Хэширование с солью
+        cursor.execute("INSERT INTO master_password (password_hash, salt) VALUES (?, ?)", (password_hash, base64.b64encode(salt).decode()))
         conn.commit()
         print("✅ Мастер-пароль успешно установлен!")
     conn.close()
 
 def verify_master_password():
-    password = getpass("Введите мастер-пароль: ")
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    attempts = 0
+    while attempts < MAX_ATTEMPTS:
+        password = getpass("Введите мастер-пароль: ")
 
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT password_hash FROM master_password WHERE id = 1")
-    stored_hash = cursor.fetchone()[0]
-    conn.close()
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT password_hash, salt FROM master_password WHERE id = 1")
+        result = cursor.fetchone()
+        stored_hash, salt = result
+        salt = base64.b64decode(salt)  # Декодируем соль
+        conn.close()
 
-    if password_hash == stored_hash:
-        return True
-    else:
-        print("❌ Неверный мастер-пароль!")
-        return False
+        password_hash = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)  # Хэширование с солью
+
+        if password_hash == stored_hash:
+            return True
+        else:
+            attempts += 1
+            print(f"❌ Неверный мастер-пароль! Осталось попыток: {MAX_ATTEMPTS - attempts}")
+
+    print("🚨 Превышено максимальное количество попыток. Блокировка на 30 секунд.")
+    time.sleep(BLOCK_TIME)  # Блокировка на 30 секунд
+    return False
 
 def encrypt_password(password):
     cipher = Fernet(load_key())
@@ -121,6 +140,7 @@ def view_password():
         print("❌ Запись не найдена.")
 
 def delete_entry():
+    """Удаляет запись по ID."""
     entry_id = input("Введите ID записи для удаления: ")
 
     conn = sqlite3.connect(DB_FILE)
@@ -167,3 +187,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
