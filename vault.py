@@ -10,19 +10,16 @@ DB_FILE = "vault.db"
 KEY_FILE = "vault.key"
 
 def generate_key():
-    """Создаёт и сохраняет ключ шифрования, если его ещё нет."""
     if not os.path.exists(KEY_FILE):
         key = Fernet.generate_key()
         with open(KEY_FILE, "wb") as f:
             f.write(key)
 
 def load_key():
-    """Загружает ключ шифрования из файла."""
     with open(KEY_FILE, "rb") as f:
         return f.read()
 
 def init_db():
-    """Создаёт таблицу для паролей и мастер-пароля, если они отсутствуют."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -43,7 +40,6 @@ def init_db():
     conn.close()
 
 def set_master_password():
-    """Устанавливает мастер-пароль при первом запуске."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM master_password")
@@ -57,7 +53,6 @@ def set_master_password():
     conn.close()
 
 def verify_master_password():
-    """Проверяет введённый мастер-пароль."""
     password = getpass("Введите мастер-пароль: ")
     password_hash = hashlib.sha256(password.encode()).hexdigest()
 
@@ -74,17 +69,14 @@ def verify_master_password():
         return False
 
 def encrypt_password(password):
-    """Шифрует пароль."""
     cipher = Fernet(load_key())
     return cipher.encrypt(password.encode())
 
 def decrypt_password(encrypted_password):
-    """Расшифровывает пароль."""
     cipher = Fernet(load_key())
     return cipher.decrypt(encrypted_password).decode()
 
 def add_entry():
-    """Добавляет запись в хранилище."""
     service = input("Введите название сервиса: ")
     username = input("Введите логин: ")
     password = getpass("Введите пароль: ")
@@ -100,7 +92,6 @@ def add_entry():
     print("✅ Запись успешно добавлена!")
 
 def list_entries():
-    """Выводит все записи."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT id, service, username FROM vault")
@@ -113,7 +104,6 @@ def list_entries():
         print("📋 Хранилище пусто.")
 
 def view_password():
-    """Отображает пароль для указанной записи (после проверки мастер-пароля)."""
     if not verify_master_password():
         return
 
@@ -131,7 +121,6 @@ def view_password():
         print("❌ Запись не найдена.")
 
 def delete_entry():
-    """Удаляет запись по ID."""
     entry_id = input("Введите ID записи для удаления: ")
 
     conn = sqlite3.connect(DB_FILE)
@@ -142,12 +131,10 @@ def delete_entry():
     print("🗑️ Запись удалена!")
 
 def banner():
-    """Отображает баннер."""
     f = Figlet(font='slant')
     print(f.renderText('Password Vault'))
 
 def menu():
-    """Главное меню."""
     while True:
         print("\n1. Добавить запись")
         print("2. Показать все записи")
@@ -172,7 +159,6 @@ def menu():
             print("❌ Неверный выбор, попробуйте снова.")
 
 def main():
-    """Основная функция."""
     generate_key()
     init_db()
     set_master_password()
