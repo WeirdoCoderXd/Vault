@@ -1,13 +1,14 @@
-# Password Vault CLI
+Password Vault CLI
 
-**Password Vault** — это безопасный менеджер паролей в командной строке, который использует шифрование AES для защиты ваших данных. Все пароли хранятся локально в зашифрованном виде.
+Password Vault is a secure command-line password manager that uses AES encryption to protect your data. All passwords are stored locally in encrypted form.
 
-Функционал
-Добавление записей с логинами и паролями
-Просмотр списка сохранённых записей
-Отображение зашифрованных паролей
-Удаление записей
-Мастер-пароль:
-Устанавливается при первом запуске.
-Хэшируется с помощью SHA-256 и сохраняется в базе данных.
-При попытке просмотра пароля требуется ввести мастер-пароль.
+Functionality:
+
+Adding entries with usernames and passwords. View a list of saved records.
+Display encrypted passwords. Delete\records.
+
+Master\ - password:
+
+It is installed when\is first started. Hashed using SHA-256 and stored in the database.
+
+When you try to view the password, you must enter the master-password.
